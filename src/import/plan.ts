@@ -14,8 +14,10 @@ import {
 
 /**
  * Decision C (docs/DECISIONS.md): in the user's data the expense-side `Returned` is the user
- * repaying a friend (note holds a person, e.g. "Aakanksha"), not a store refund. It maps to the
- * people-backed `Repaid` category. Keys are ASCII-folded source names.
+ * repaying someone (the note holds who, e.g. "Aakanksha"), not a store refund; confirmed by the
+ * user ("returned and repaid are same"). It maps to the people-backed `Repaid` category. Keys are
+ * ASCII-folded source names. Note that the name on these categories is a counterparty: a person,
+ * a company, a place, anything (see docs/DECISIONS.md), so nothing here assumes a human.
  */
 export const EXPENSE_CATEGORY_ALIASES: ReadonlyMap<string, string> = new Map([['returned', 'Repaid']]);
 
@@ -180,7 +182,7 @@ export function planImport(db: AppDb, csvText: string, options: PlanOptions = {}
     const key = fold(name);
     const found = persons.get(key);
     if (found) {
-      if (found.name !== name) warnings.push(`person ${JSON.stringify(name)} matched existing/first-seen ${JSON.stringify(found.name)} (case-insensitive)`);
+      if (found.name !== name) warnings.push(`name ${JSON.stringify(name)} matched existing/first-seen ${JSON.stringify(found.name)} (case-insensitive)`);
       return found.id;
     }
     const p = { id: genId(), name };
@@ -256,9 +258,9 @@ export function planImport(db: AppDb, csvText: string, options: PlanOptions = {}
       }
       let personId: string | null = null;
       if (r.note !== r.note.trim() && r.note.trim() !== '') {
-        warnings.push(`line ${r.line}: person name ${JSON.stringify(r.note)} had surrounding whitespace, trimmed to ${JSON.stringify(r.note.trim())}`);
+        warnings.push(`line ${r.line}: name ${JSON.stringify(r.note)} had surrounding whitespace, trimmed to ${JSON.stringify(r.note.trim())}`);
       }
-      if (r.note.trim() === '') warnings.push(`line ${r.line}: ${top.name} row has no person in Note; imported without a person`);
+      if (r.note.trim() === '') warnings.push(`line ${r.line}: ${top.name} row has nothing in Note to say who or what it was with (person, company, place); imported without one`);
       else personId = personFor(r.note.trim());
       legs.push(legFor(r, { categoryId: top.id, personId }));
     } else {

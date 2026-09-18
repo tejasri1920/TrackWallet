@@ -372,11 +372,11 @@ describe('import CLI safety rules', { timeout: 60_000 }, () => {
     expect(fs.existsSync(missing)).toBe(false);
   });
 
-  it('will not create new people or categories until --confirm-new is given', () => {
+  it('will not create new names or categories until --confirm-new is given', () => {
     const dir = tmp(); const db = makeDb(dir);
     const r = run('import.ts', [FIXTURE_PATH, '--db', db, '--commit']);
     expect(r.status).toBe(1);
-    expect(r.err).toMatch(/would create 7 people and 0 categories/);
+    expect(r.err).toMatch(/would create 7 new names \(people, companies, places\) and 0 categories/);
     expect(r.err).toContain('--confirm-new');
     expect(txCount(db)).toBe(0);
     expect(backups(dir)).toEqual([]);
@@ -387,7 +387,7 @@ describe('import CLI safety rules', { timeout: 60_000 }, () => {
     const r = run('import.ts', [FIXTURE_PATH, '--db', db, '--commit', '--confirm-new']);
     expect(r.status).toBe(0);
     expect(r.out).toContain('Backup written and checked:');
-    expect(r.out).toContain('COMMITTED: 65 transaction(s), 7 people, 0 categories');
+    expect(r.out).toContain('COMMITTED: 65 transaction(s), 7 names, 0 categories');
     expect(r.out).toContain('VERIFY: ALL CHECKS PASSED');
     expect(txCount(db)).toBe(65);
     const [backup] = backups(dir);

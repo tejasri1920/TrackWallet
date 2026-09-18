@@ -5,7 +5,7 @@
 //   --commit:       writes for real. Requires --db pointing at an EXISTING database (npm run db:init).
 //                   Takes a backup copy first. One transaction: any invariant or verification failure
 //                   rolls the whole import back.
-//   --confirm-new:  required when the import would create people or categories. Review the list in
+//   --confirm-new:  required when the import would create new names (people, companies, places) or categories. Review the list in
 //                   the dry run first; this is the "confirm before committing" step.
 //   --allow-skips:  required when some rows are skipped (e.g. unpaired transfers). Skipped rows are
 //                   NOT imported, so the database will not match the file until they are resolved.
@@ -77,7 +77,7 @@ try {
     refuse(`${plan.issues.length} row(s) failed validation.`);
   } else if ((plan.newPeople.length > 0 || plan.newCategories.length > 0) && !flag('--confirm-new')) {
     refuse(
-      `this import would create ${plan.newPeople.length} people and ${plan.newCategories.length} categories (listed above). ` +
+      `this import would create ${plan.newPeople.length} new names (people, companies, places) and ${plan.newCategories.length} categories (listed above). ` +
         'Check the names, then re-run with --confirm-new.',
     );
   } else if (plan.skipped.length > 0 && !flag('--allow-skips')) {
@@ -111,7 +111,7 @@ try {
 
     const result = commitImport(db, plan, localIso(), { verifyCsv: csvText, allowLookalikes: flag('--allow-lookalikes') });
     console.log(
-      `COMMITTED: ${result.transactionsInserted} transaction(s), ${result.peopleInserted} people, ${result.categoriesInserted} categories.\n`,
+      `COMMITTED: ${result.transactionsInserted} transaction(s), ${result.peopleInserted} names, ${result.categoriesInserted} categories.\n`,
     );
     console.log(formatVerifyReport(verifyImport(db, csvText, { only: new Set(plan.legs.map((l) => l.hash)), acknowledgedLookalikes: flag('--allow-lookalikes') })));
   }

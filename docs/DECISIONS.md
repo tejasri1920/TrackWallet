@@ -205,8 +205,9 @@ a mutation check (neutering each new protection makes exactly one test fail).
   screenshot shows "Returned 614$" as an expense, the same pattern. So expense `Returned`
   maps to the people-backed `Repaid` (person from the note) and no `Refund` category is
   seeded. If a genuine store refund ever appears (positive amount), it will be an Income
-  row and needs an income-kind category. **Made on evidence, not confirmed by the user:
-  please confirm.** It is one line (`EXPENSE_CATEGORY_ALIASES` in `src/import/plan.ts`).
+  row and needs an income-kind category. **Confirmed by the user on
+  2026-09-18 ("returned and repaid are same").** It is one line (`EXPENSE_CATEGORY_ALIASES`
+  in `src/import/plan.ts`).
 - **G. Import hash:** SHA-256 over (timestamp with seconds, type, account, currency,
   amount, amount_usd, category, subcategory, note) plus an occurrence index for identical
   rows within a file. Names are case-folded and trimmed first. **No filename.** Pure-TS
@@ -322,3 +323,23 @@ Two fixes exposed problems in my own tests, which is why they are recorded: the 
 silently), so the CLI now reports how it actually opened the database; and the first
 hash-separator test passed even with the bug, because both colliding rows were in one file.
 The reviewer was **not** run a third time on these second-round fixes.
+
+### Names on Lend / Returned / Taken / Repaid are counterparties, not only people (2026-09-18)
+
+The user: the name on these rows does not have to be a person; it can be a company, a place,
+"rent", and so on. So `India` (a Taken row) and `UPS` (a Lend row) are valid and stay; all 7
+names from the August fixture are accepted.
+
+- **Behaviour is unchanged:** the importer already accepted any text as the name, matched
+  case-insensitively and trimmed. Nothing assumes a human.
+- **Internal names are unchanged:** the table is still `people` and the column `person_id`
+  (locked by the spec and decision B; nothing is shipped, but a rename would touch dozens of
+  files for no behaviour change). Treat "person" in code and schema as meaning "counterparty".
+- **User-facing wording is neutral:** the import report and CLI say "names (people, companies,
+  places)"; warnings say "name" rather than "person".
+- **For Phases 3 to 6 and the UI:** label this list neutrally (for example "Who or what"), let
+  the user add any name, and do not validate it as a human name. The per-name ledger in
+  decision E is then a balance per counterparty, so it works for a company or a place too.
+- **Open option:** if the schema names should also change, `people`/`person_id` ->
+  `counterparties`/`counterparty_id` is a mechanical rename plus one regenerated migration
+  while nothing is shipped. It becomes a real migration once a database exists. Not done.

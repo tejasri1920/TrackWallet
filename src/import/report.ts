@@ -10,7 +10,7 @@ export function describeLeg(leg: PlannedLeg, plan: ImportPlan): string {
   const cat = r.type === 'transfer'
     ? '(transfer)'
     : `${leg.categoryId ? categoryPath(leg, plan) : ''}`;
-  const who = leg.personId ? `person=${r.note.trim()}` : leg.merchant ? `merchant=${leg.merchant}` : leg.note ? `note=${leg.note}` : '';
+  const who = leg.personId ? `name=${r.note.trim()}` : leg.merchant ? `merchant=${leg.merchant}` : leg.note ? `note=${leg.note}` : '';
   return `${r.occurredAt}  ${pad(r.type, 8)} ${pad(r.account, 19)} ${pad(signed(r.amountNative), 10)} ${pad(cat, 30)} ${who}`.trimEnd();
 }
 
@@ -57,7 +57,7 @@ export function formatPlan(plan: ImportPlan): string {
   o.push('  accounts:   (none; unknown accounts are errors, never auto-created)');
   o.push(`  categories: ${plan.newCategories.length === 0 ? '(none)' : ''}`);
   for (const c of plan.newCategories) o.push(`    ${c.kind}: ${c.parentName ? `${c.parentName} > ` : ''}${c.name}`);
-  o.push(`  people:     ${plan.newPeople.length === 0 ? '(none)' : `${plan.newPeople.length}  <- please confirm this list before committing`}`);
+  o.push(`  names:      ${plan.newPeople.length === 0 ? '(none)' : `${plan.newPeople.length}  <- who or what the Lend/Returned/Taken/Repaid rows were with (people, companies, places); please confirm before committing`}`);
   for (const p of plan.newPeople) o.push(`    ${p.name}`);
 
   if (plan.categoryMappings.length) {

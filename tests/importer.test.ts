@@ -359,10 +359,10 @@ describe('category and people mapping', () => {
     expect(later.newPeople).toEqual([]);
   });
 
-  it('imports a people-backed row with no note but warns about it', () => {
+  it('imports a people-backed row with an empty note but warns about it', () => {
     const h = makeEnforcingDb();
     const p = importText(h, file(exp('Lend', '', '')));
-    expect(p.warnings[0]).toMatch(/no person in Note/);
+    expect(p.warnings[0]).toMatch(/nothing in Note to say who or what/);
     expect(rowsOf(h.sqlite, `SELECT person_id FROM transactions`)).toEqual([{ person_id: null }]);
     expect(invariantFailures(h)).toEqual([]);
   });

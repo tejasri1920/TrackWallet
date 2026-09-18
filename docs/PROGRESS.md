@@ -154,8 +154,10 @@ consciously left, listed in `DECISIONS.md`. The reviewer was later re-run on tho
   transfer's two legs fall in different files, has been tested only with synthetic files.
 - **Opening balances (decision I) are not set**, so no balance chip can match TrackWallet
   yet. Needs all months up to 2026-09-14 imported.
-- **Please confirm decision C** (expense `Returned` -> `Repaid`) and the 7 people, notably
-  `India` (a `Taken` row) and `UPS` (a `Lend` row), which look like they may not be people.
+- **Confirmed by the user (2026-09-18):** decision C (expense `Returned` = `Repaid`), and that the
+  7 names, including `India` and `UPS`, are fine because the name on those rows can be a
+  company, a place or anything, not only a person. Wording changed to say "names"; internal
+  names (`people`, `person_id`) are unchanged. See `DECISIONS.md`.
 - **Editing an already-imported transaction in TrackWallet and re-exporting** creates a
   second row (content hash changes). Import each month once, when it is final.
 - The in-app file-picker import does not exist yet (Phase 3/4). `TextDecoder` (fatal mode)
