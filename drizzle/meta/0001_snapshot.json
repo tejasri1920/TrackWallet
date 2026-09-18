@@ -1,0 +1,562 @@
+{
+  "id": "3158bafd-9dc9-4797-b007-1f5039081cda",
+  "prevId": "e9a1e590-a88e-4043-91a5-2c75bd6157c8",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "accounts": {
+      "name": "accounts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'USD'"
+        },
+        "opening_balance_native": {
+          "name": "opening_balance_native",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "icon": {
+          "name": "icon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "accounts_name_ci": {
+          "name": "accounts_name_ci",
+          "columns": [
+            "\"name\" COLLATE NOCASE"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "accounts_type_valid": {
+          "name": "accounts_type_valid",
+          "value": "\"accounts\".\"type\" IN ('cash','bank','credit','splitwise','loan')"
+        },
+        "accounts_currency_format": {
+          "name": "accounts_currency_format",
+          "value": "\"accounts\".\"currency\" GLOB '[A-Z][A-Z][A-Z]'"
+        },
+        "accounts_opening_integer": {
+          "name": "accounts_opening_integer",
+          "value": "typeof(\"accounts\".\"opening_balance_native\") = 'integer'"
+        }
+      }
+    },
+    "categories": {
+      "name": "categories",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "icon": {
+          "name": "icon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "people_backed": {
+          "name": "people_backed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "categories_parent_id_categories_id_fk": {
+          "name": "categories_parent_id_categories_id_fk",
+          "tableFrom": "categories",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "tableTo": "categories",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "categories_kind_valid": {
+          "name": "categories_kind_valid",
+          "value": "\"categories\".\"kind\" IN ('income','expense')"
+        }
+      }
+    },
+    "people": {
+      "name": "people",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "people_name_ci": {
+          "name": "people_name_ci",
+          "columns": [
+            "\"name\" COLLATE NOCASE"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "transactions": {
+      "name": "transactions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "amount_native": {
+          "name": "amount_native",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "amount_usd": {
+          "name": "amount_usd",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fx_rate": {
+          "name": "fx_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "merchant": {
+          "name": "merchant",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "transfer_group_id": {
+          "name": "transfer_group_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "import_hash": {
+          "name": "import_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "transactions_import_hash": {
+          "name": "transactions_import_hash",
+          "columns": [
+            "import_hash"
+          ],
+          "where": "\"transactions\".\"import_hash\" IS NOT NULL",
+          "isUnique": true
+        },
+        "transactions_occurred": {
+          "name": "transactions_occurred",
+          "columns": [
+            "occurred_at"
+          ],
+          "isUnique": false
+        },
+        "transactions_account": {
+          "name": "transactions_account",
+          "columns": [
+            "account_id",
+            "occurred_at"
+          ],
+          "isUnique": false
+        },
+        "transactions_group": {
+          "name": "transactions_group",
+          "columns": [
+            "transfer_group_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "transactions_account_id_accounts_id_fk": {
+          "name": "transactions_account_id_accounts_id_fk",
+          "tableFrom": "transactions",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transactions_category_id_categories_id_fk": {
+          "name": "transactions_category_id_categories_id_fk",
+          "tableFrom": "transactions",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "categories",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transactions_person_id_people_id_fk": {
+          "name": "transactions_person_id_people_id_fk",
+          "tableFrom": "transactions",
+          "columnsFrom": [
+            "person_id"
+          ],
+          "tableTo": "people",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "tx_type_valid": {
+          "name": "tx_type_valid",
+          "value": "\"transactions\".\"type\" IN ('income','expense','transfer')"
+        },
+        "tx_expense_shape": {
+          "name": "tx_expense_shape",
+          "value": "\"transactions\".\"type\" <> 'expense' OR (\"transactions\".\"amount_native\" < 0 AND \"transactions\".\"category_id\" IS NOT NULL)"
+        },
+        "tx_income_shape": {
+          "name": "tx_income_shape",
+          "value": "\"transactions\".\"type\" <> 'income' OR (\"transactions\".\"amount_native\" > 0 AND \"transactions\".\"category_id\" IS NOT NULL)"
+        },
+        "tx_transfer_shape": {
+          "name": "tx_transfer_shape",
+          "value": "\"transactions\".\"type\" <> 'transfer' OR (\"transactions\".\"category_id\" IS NULL AND \"transactions\".\"transfer_group_id\" IS NOT NULL)"
+        },
+        "tx_usd_rate": {
+          "name": "tx_usd_rate",
+          "value": "\"transactions\".\"currency\" <> 'USD' OR (\"transactions\".\"amount_native\" = \"transactions\".\"amount_usd\" AND \"transactions\".\"fx_rate\" = 1.0)"
+        },
+        "tx_foreign_rate": {
+          "name": "tx_foreign_rate",
+          "value": "\"transactions\".\"currency\" = 'USD' OR (\"transactions\".\"fx_rate\" > 0 AND ABS(ABS(\"transactions\".\"amount_native\") / \"transactions\".\"fx_rate\" - ABS(\"transactions\".\"amount_usd\")) <= 1)"
+        },
+        "tx_sign_match": {
+          "name": "tx_sign_match",
+          "value": "(\"transactions\".\"amount_native\" > 0 AND \"transactions\".\"amount_usd\" > 0) OR (\"transactions\".\"amount_native\" < 0 AND \"transactions\".\"amount_usd\" < 0) OR (\"transactions\".\"amount_native\" = 0 AND \"transactions\".\"amount_usd\" = 0)"
+        },
+        "tx_money_integer": {
+          "name": "tx_money_integer",
+          "value": "typeof(\"transactions\".\"amount_native\") = 'integer' AND typeof(\"transactions\".\"amount_usd\") = 'integer'"
+        },
+        "tx_fx_numeric": {
+          "name": "tx_fx_numeric",
+          "value": "typeof(\"transactions\".\"fx_rate\") IN ('real','integer')"
+        },
+        "tx_currency_format": {
+          "name": "tx_currency_format",
+          "value": "\"transactions\".\"currency\" GLOB '[A-Z][A-Z][A-Z]'"
+        },
+        "tx_group_only_on_transfer": {
+          "name": "tx_group_only_on_transfer",
+          "value": "\"transactions\".\"transfer_group_id\" IS NULL OR \"transactions\".\"type\" = 'transfer'"
+        },
+        "tx_transfer_nonzero": {
+          "name": "tx_transfer_nonzero",
+          "value": "\"transactions\".\"type\" <> 'transfer' OR \"transactions\".\"amount_native\" <> 0"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  },
+  "internal": {
+    "indexes": {
+      "accounts_name_ci": {
+        "columns": {
+          "\"name\" COLLATE NOCASE": {
+            "isExpression": true
+          }
+        }
+      },
+      "people_name_ci": {
+        "columns": {
+          "\"name\" COLLATE NOCASE": {
+            "isExpression": true
+          }
+        }
+      }
+    }
+  }
+}

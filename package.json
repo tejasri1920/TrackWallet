@@ -1,0 +1,36 @@
+{
+  "name": "expenses-app",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "expo": "~57.0.24",
+    "expo-sqlite": "~57.0.3",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/react": "~19.2.2",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.13",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.1"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:init": "tsx src/cli/db-init.ts",
+    "schema-check": "tsx src/cli/schema-check.ts",
+    "import": "tsx src/cli/import.ts",
+    "import-verify": "tsx src/cli/import-verify.ts"
+  },
+  "private": true
+}
