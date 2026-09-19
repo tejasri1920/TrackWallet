@@ -13,6 +13,8 @@ import { HEADER, ImportFatalError, pairTransfers, parseTrackWallet } from '../sr
 import { formatVerifyReport, verifyImport } from '../src/import/verify';
 import { NOW, makeEnforcingDb, rowsOf } from './helpers';
 
+/** The user reviewed and accepted the new names / skipped rows (the library refuses otherwise). */
+const ACK = { confirmNew: true, allowSkips: true };
 const REPO = path.resolve(__dirname, '..');
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/trackwallet_2026-08-01_2026-08-31.csv');
 const FIXTURE = fs.readFileSync(FIXTURE_PATH, 'utf8');
@@ -25,7 +27,7 @@ const plan = (h: Handle, text: string) => planImport(h.db, text, { filename: 'ha
 /** Plan + commit with in-transaction verification, as the CLI does. */
 const importText = (h: Handle, text: string) => {
   const p = plan(h, text);
-  commitImport(h.db, p, NOW, { verifyCsv: text });
+  commitImport(h.db, p, NOW, { ...ACK, verifyCsv: text });
   return p;
 };
 const count = (h: Handle, table = 'transactions') => rowsOf(h.sqlite, `SELECT COUNT(*) AS n FROM ${table}`)[0].n as number;
@@ -85,7 +87,7 @@ describe('identical same-minute transfers are paired consistently with what is a
     expect(count(h)).toBe(2);
     const p = plan(h, later);
     expect([p.legs.length, p.alreadyImported.length, p.skipped.length]).toEqual([2, 2, 0]);
-    commitImport(h.db, p, NOW, { verifyCsv: later });
+    commitImport(h.db, p, NOW, { ...ACK, verifyCsv: later });
     expect(count(h)).toBe(4);
     expect(verifyImport(h.db, later).passed).toBe(true);
     expect(verifyImport(h.db, first).passed).toBe(true);
@@ -232,7 +234,7 @@ describe('verification runs inside the commit, so a bad import is never left beh
     // the planned amount differs from the CSV by one cent: inserts fine, verification must object
     p.legs[0].row = { ...p.legs[0].row, amountNative: p.legs[0].row.amountNative - 1, amountUsd: p.legs[0].row.amountUsd - 1 };
     let error: unknown;
-    try { commitImport(h.db, p, NOW, { verifyCsv: FIXTURE }); } catch (e) { error = e; }
+    try { commitImport(h.db, p, NOW, { ...ACK, verifyCsv: FIXTURE }); } catch (e) { error = e; }
     expect(error).toBeInstanceOf(ImportVerificationError);
     expect((error as ImportVerificationError).report.passed).toBe(false);
     expect([count(h), count(h, 'people')]).toEqual([0, 0]);
@@ -299,7 +301,7 @@ describe('hostile or odd values fail safely', () => {
     const p = plan(h, csv);
     expect(p.transferPairs).toBe(0);
     expect(p.skipped).toHaveLength(2);
-    expect(() => commitImport(h.db, p, NOW, { verifyCsv: csv })).not.toThrow();
+    expect(() => commitImport(h.db, p, NOW, { ...ACK, verifyCsv: csv })).not.toThrow();
     expect(count(h)).toBe(0);
   });
 });

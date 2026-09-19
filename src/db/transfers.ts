@@ -1,5 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { newId } from './id';
+import { MAX_CENTS } from './limits';
 import { transactions } from './schema';
 import type { AppDb } from './types';
 
@@ -38,10 +39,12 @@ export function createTransfer(
   const genId = input.newId ?? newId;
 
   if (!isPositiveInt(amountUsd)) throw new Error('amountUsd must be a positive integer (cents)');
+  if (amountUsd > MAX_CENTS) throw new Error('amountUsd is larger than the limit');
   for (const leg of [from, to]) {
     if (!isPositiveInt(leg.amountNative)) {
       throw new Error('amountNative must be a positive integer (minor units)');
     }
+    if (leg.amountNative > MAX_CENTS) throw new Error('amountNative is larger than the limit');
     if (leg.currency === 'USD' && leg.amountNative !== amountUsd) {
       throw new Error('a USD leg must have amountNative equal to amountUsd');
     }

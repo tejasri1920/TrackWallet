@@ -340,6 +340,110 @@ names from the August fixture are accepted.
 - **For Phases 3 to 6 and the UI:** label this list neutrally (for example "Who or what"), let
   the user add any name, and do not validate it as a human name. The per-name ledger in
   decision E is then a balance per counterparty, so it works for a company or a place too.
-- **Open option:** if the schema names should also change, `people`/`person_id` ->
-  `counterparties`/`counterparty_id` is a mechanical rename plus one regenerated migration
-  while nothing is shipped. It becomes a real migration once a database exists. Not done.
+- **Rename declined (user, 2026-09-18):** keep `people` / `person_id`. The user wants to add
+  people (names) by hand, just as references for their own use, whether or not any
+  transaction uses them. The schema already allows that: `people` stands alone (name, an
+  optional free-text note, an archive flag), so nothing needs to change. Phase 3 adds
+  create / edit / archive for people, and Phase 4 the screen. Names stay unique ignoring
+  case. A name that transactions use is archived, never hard-deleted (foreign keys forbid it).
+  No extra fields (phone, email, ...) exist; adding them would be a new decision.
+
+## Phase 3 decisions (2026-09-18)
+
+### What was built
+
+The data layer, `src/data/`: accounts, people, categories, income/expense entries, transfers,
+filtered lists with search, balances, and the summaries the Home and Transactions screens need. Every
+function takes a `DataContext` (`{ db, now?, newId? }`), works on any driver (`AppDb`), raises
+`DataError` with a `code` (`invalid`, `not_found`, `conflict`) and a message the UI can show, and
+validates before it writes. The in-app import is `previewImport` (writes nothing) then
+`applyImport` (`src/import/service.ts`). `src/db/expo.ts` opens the on-device database.
+
+### Rules the layer enforces (on top of the database's own CHECKs and triggers)
+
+- **USD only.** `createAccount` has no currency input; every write refuses a non-USD account. A
+  non-USD row can still exist if inserted by hand: edits refuse it, totals refuse it.
+- **Amounts are positive whole cents** (the sign follows the kind of entry), capped at
+  `MAX_CENTS` = 10^12 ($10 billion) so that sums stay exact in a JavaScript number.
+- **Edits.** Pass only what changes; `null` clears merchant, note and name only. An entry cannot
+  change kind (delete and re-create). References you did not change may have been archived since;
+  references you change may not be archived (a subcategory under an archived parent counts as archived).
+- **Names on entries.** A name attaches only to a people-backed category, and a people-backed
+  category takes no merchant. A category lists either subcategories or names, never both.
+- **Transfers** are edited as a pair, in one database transaction. Each leg keeps its own note
+  unless the caller sets one. A damaged group (not two live legs, or legs that do not balance) is
+  reported as a conflict and left untouched; it is never silently repaired.
+- **Deleting.** Entries and transfers are soft-deleted (both legs together). People and categories
+  can be hard-deleted only if nothing has EVER referenced them (a soft-deleted transaction counts),
+  and categories only without subcategories; otherwise archive. Accounts are archived, never deleted.
+  Archiving a category archives its subcategories; restoring a child needs its parent restored first.
+- **Typing an archived name brings it back** (`ensurePerson`); a clash message says when the
+  clashing entry is archived. Names must contain a visible character.
+
+### Balance and summary semantics
+
+- Account balance = opening balance + the sum of live transactions (Section 5.2). A transfer is two
+  ordinary legs, so it moves money without changing the total. Deleted rows never count.
+- **Total balance** sums every account including archived ones (they still hold money; an option
+  leaves them out) and negatives are never clamped. It refuses to add across currencies.
+- The default balance counts EVERYTHING, including future-dated entries; `asOfDate` gives the balance at
+  the end of a day. A headline that must match a chart ending today should pass today's date.
+- **Cash flow, category breakdown and the daily calendar** sum stored `amount_usd`, never a rate,
+  and never count transfers. Lend/Repaid/Taken/Returned count as spending/income (as TrackWallet does).
+  An empty account selection means nothing, not everything.
+- Verified against hand calculation and against numbers read off TrackWallet's own screenshots
+  (header totals and all 22 calendar days, including the transfer markers).
+
+### Import inside the app
+
+- The confirmations now live in the library, not just the CLI: `commitImport` refuses new names or
+  categories unless `confirmNew`, skipped rows unless `allowSkips`, and lookalike rows unless
+  `allowLookalikes`. They are booleans: `applyImport` re-plans, so `confirmNew` covers whatever the
+  fresh plan contains. The UI should therefore show `previewImport` and apply immediately.
+- **Importing into an archived account, category or name is allowed** (the file's history belongs
+  there; blocking would stop you importing old months into an account you have since closed), and the
+  plan warns once per archived item. Manual entry into archived things stays refused.
+
+### Schema
+
+New CHECK `tx_occurred_format` and extra invariant 17: `occurred_at` must be
+`YYYY-MM-DDTHH:MM:SS`, because every date query compares it as text. Migration `0000` was
+regenerated (nothing has shipped).
+
+### Known limits and hand-offs
+
+- **Export (Phase 7):** a manual entry can carry both a merchant and a note, but TrackWallet's
+  export has one Note column. The export currently writes person, else merchant, else note, so a row
+  with both loses one. Decide the rule in Phase 7.
+- Text search is case-insensitive for ASCII only (SQLite's LIKE); "émile" does not find "Émile".
+- Offset paging can skip or repeat a row if something is inserted between two pages.
+- **Device-only risks, unverifiable from Node:** `src/db/expo.ts` type-checks against `AppDb` but has
+  never run on a phone; `expo-crypto` is not installed (`newId` needs `crypto.randomUUID`); there is no
+  Metro/Babel configuration yet for the `.sql` migration files that `drizzle/migrations.js` imports; and
+  the way JavaScript numbers bind against the `typeof(...) = 'integer'` CHECKs is untested on-device.
+  These belong to Phase 4 (app wiring).
+
+### Phase 3 review outcome
+
+The reviewer stand-in first stalled (no output after 10 minutes), which was reported, not counted. It
+was rerun as two parallel passes. **Reads:** no balance was wrong (its own 551-day comparison of the
+series against the total found no mismatch); it found an empty account selection treated as "all", a
+crash on offset-without-limit, a possible native/USD divergence, and several tests that would survive
+mutations. **Writes:** 13 findings, the main ones being `updateTransfer` overwriting the second leg's
+note (data loss), `applyImport` skipping the skipped-rows gate, `updateEntry` rewriting non-USD rows,
+no upper bound on amounts, `null` silently meaning "unchanged", and a live subcategory under an
+archived parent. All were fixed with regression tests except: archived imports (kept allowed, warned),
+the boolean confirmations and non-ASCII search (documented above), and the device risks (Phase 4).
+
+**Second pass (on those fixes).** Seven of nine fix groups were confirmed correct; it also confirmed
+that transfer pairing and the read-side SQL held up. It found ONE REGRESSION caused by my own fix: the
+importer accepted amounts up to about 10^15 cents while the new data-layer cap is 10^12, so an
+imported row above the cap could never be edited or deleted (every edit re-validates the amount).
+Fixed by giving the importer, the data layer and the raw transfer write path ONE shared limit
+(`src/db/limits.ts`). Also fixed: more invisible/filler characters rejected in names, an extra
+`archived` field leaking into `plan.newPeople`, and repeated identical case-match warnings. Not
+fixed (documented): names that differ only by non-ASCII case or Unicode normalisation are not
+treated as duplicates (SQLite's NOCASE is ASCII-only); the CHECK on `occurred_at` checks shape,
+not that the date exists (every write path validates the calendar first); `accountBalances` still
+sums native amounts for a USD account holding a foreign-currency row that could only be
+hand-inserted (totals and the series refuse it). The reviewer was not run a third time.

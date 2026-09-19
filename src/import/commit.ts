@@ -22,6 +22,25 @@ export class ImportLookalikeError extends Error {
   }
 }
 
+export type Acknowledgement = 'newRecords' | 'skippedRows';
+
+/**
+ * Thrown before anything is written: the import would create new names or categories, or skip rows,
+ * and the caller has not said the user reviewed that. `needs` lists what must be acknowledged.
+ */
+export class ImportNeedsConfirmationError extends Error {
+  constructor(readonly plan: ImportPlan, readonly needs: Acknowledgement[]) {
+    const parts: string[] = [];
+    if (needs.includes('newRecords')) {
+      parts.push(`it would create ${plan.newPeople.length} new name(s) and ${plan.newCategories.length} categor${plan.newCategories.length === 1 ? 'y' : 'ies'} (pass confirmNew after the user has reviewed them)`);
+    }
+    if (needs.includes('skippedRows')) {
+      parts.push(`${plan.skipped.length} row(s) would be skipped and NOT imported (pass allowSkips after the user has reviewed them)`);
+    }
+    super(`import needs confirmation: ${parts.join('; ')}`);
+  }
+}
+
 /** Thrown from inside the transaction, so the whole import rolls back. */
 export class ImportInvariantError extends Error {
   constructor(readonly failures: InvariantResult[]) {
@@ -52,6 +71,10 @@ export interface CommitOptions {
    * wants them imported anyway. Without this a plan containing lookalikes is refused.
    */
   allowLookalikes?: boolean;
+  /** The user reviewed the names and categories the import would create (`plan.newPeople`, `plan.newCategories`). */
+  confirmNew?: boolean;
+  /** The user reviewed the rows the import would skip (`plan.skipped`) and accepts that they are not imported. */
+  allowSkips?: boolean;
 }
 
 export interface CommitResult {
@@ -68,6 +91,10 @@ export interface CommitResult {
 export function commitImport(db: AppDb, plan: ImportPlan, now: string, options: CommitOptions = {}): CommitResult {
   if (plan.issues.length > 0) throw new ImportBlockedError(plan);
   if (plan.lookalikes.length > 0 && !options.allowLookalikes) throw new ImportLookalikeError(plan);
+  const needs: Acknowledgement[] = [];
+  if ((plan.newPeople.length > 0 || plan.newCategories.length > 0) && !options.confirmNew) needs.push('newRecords');
+  if (plan.skipped.length > 0 && !options.allowSkips) needs.push('skippedRows');
+  if (needs.length > 0) throw new ImportNeedsConfirmationError(plan, needs);
 
   db.transaction((tx) => {
     for (const p of plan.newPeople) {

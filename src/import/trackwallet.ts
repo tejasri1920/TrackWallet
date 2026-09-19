@@ -1,3 +1,4 @@
+import { MAX_CENTS } from '../db/limits';
 import { CsvError, parseCsv } from './csv';
 import { parseMinorUnits } from './money';
 import { fold } from './text';
@@ -105,6 +106,9 @@ export function parseTrackWallet(text: string): { rows: SourceRow[]; issues: Row
     try { native = parseMinorUnits(amount); } catch (e) { problems.push(`Amount: ${(e as Error).message}`); }
     try { usd = parseMinorUnits(amountUsd); } catch (e) { problems.push(`Amount_USD: ${(e as Error).message}`); }
 
+    if (Math.abs(native) > MAX_CENTS || Math.abs(usd) > MAX_CENTS) {
+      problems.push(`amount is larger than the limit of ${MAX_CENTS / 100} dollars`);
+    }
     if (account === '') problems.push('Account is empty');
     if (currency !== 'USD') {
       problems.push(`currency ${JSON.stringify(currency)} is not supported yet (USD only)`);

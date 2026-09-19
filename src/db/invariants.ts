@@ -167,6 +167,14 @@ FROM accounts WHERE currency NOT GLOB '[A-Z][A-Z][A-Z]'`,
 FROM categories c JOIN categories p ON p.id = c.parent_id
 WHERE c.kind <> p.kind`,
   },
+  {
+    id: 17,
+    extra: true,
+    name: 'occurred_at is a local timestamp shaped YYYY-MM-DDTHH:MM:SS',
+    sql: `SELECT id, occurred_at
+FROM transactions
+WHERE occurred_at NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'`,
+  },
 ];
 
 export type Row = Record<string, unknown>;

@@ -153,6 +153,8 @@ export const transactions = sqliteTable(
     // diluted by an income/expense row sharing a group; and a transfer leg moves something.
     check('tx_group_only_on_transfer', sql`${t.transferGroupId} IS NULL OR ${t.type} = 'transfer'`),
     check('tx_transfer_nonzero', sql`${t.type} <> 'transfer' OR ${t.amountNative} <> 0`),
+    // Every date query compares this text lexicographically, so its shape is part of the schema.
+    check('tx_occurred_format', sql`${t.occurredAt} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'`),
     uniqueIndex('transactions_import_hash')
       .on(t.importHash)
       .where(sql`${t.importHash} IS NOT NULL`),

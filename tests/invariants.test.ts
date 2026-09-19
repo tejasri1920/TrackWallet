@@ -225,6 +225,14 @@ describe('enforcement: violating rows are rejected', () => {
     ).toBeTruthy();
   });
 
+  it('extra 17: occurred_at must be a local timestamp shaped YYYY-MM-DDTHH:MM:SS', () => {
+    const { sqlite } = makeEnforcingDb();
+    for (const bad of ['2026-08-01', '2026-08-01T10:00', '2026-08-01 10:00:00', '2026-8-1T10:00:00', '2026-08-01T10:00:00Z', '']) {
+      expect(() => insertTx(sqlite, { occurred_at: bad }), JSON.stringify(bad)).toThrow(/tx_occurred_format/);
+    }
+    expect(insertTx(sqlite, { occurred_at: '2026-08-01T10:00:00' })).toBeTruthy();
+  });
+
   it('extra 16: a subcategory has the same kind as its parent', () => {
     const { sqlite } = makeEnforcingDb();
     expect(() => insertCategory(sqlite, { id: 'bad', name: 'Bad', kind: 'income', parent_id: CAT.food })).toThrow(
@@ -632,6 +640,17 @@ describe('audit queries catch corrupt data on an unconstrained database', () => 
     insertTx(sqlite, transferLeg('deleted-mismatch', -1000, { account_id: ACC.chase }));
     insertTx(sqlite, transferLeg('deleted-mismatch', 1000, { account_id: ACC.chase, deleted_at: NOW }));
     expect(keys(flagged(sqlite, 14), 'transfer_group_id')).toEqual(['inr-inr', 'same-acct']);
+  });
+
+  it('extra 17: badly shaped occurred_at values are flagged', () => {
+    const { sqlite } = makeUnconstrainedDb();
+    const bad = [
+      insertTx(sqlite, { occurred_at: '2026-08-01' }),
+      insertTx(sqlite, { occurred_at: '2026-08-01T10:00' }),
+      insertTx(sqlite, { occurred_at: '2026-08-01T10:00:00Z' }),
+    ];
+    insertTx(sqlite, { occurred_at: '2026-08-01T10:00:00' }); // good
+    expect(keys(flagged(sqlite, 17))).toEqual(sorted(bad));
   });
 
   it('extra 16: subcategory of a different kind than its parent', () => {

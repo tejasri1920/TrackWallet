@@ -1,6 +1,6 @@
 {
-  "id": "3158bafd-9dc9-4797-b007-1f5039081cda",
-  "prevId": "e9a1e590-a88e-4043-91a5-2c75bd6157c8",
+  "id": "3ffa18a3-517b-4e93-a70a-8fa09c151a33",
+  "prevId": "aace6915-1c85-4510-8b99-da8358148167",
   "version": "6",
   "dialect": "sqlite",
   "tables": {
@@ -530,6 +530,10 @@
         "tx_transfer_nonzero": {
           "name": "tx_transfer_nonzero",
           "value": "\"transactions\".\"type\" <> 'transfer' OR \"transactions\".\"amount_native\" <> 0"
+        },
+        "tx_occurred_format": {
+          "name": "tx_occurred_format",
+          "value": "\"transactions\".\"occurred_at\" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'"
         }
       }
     }

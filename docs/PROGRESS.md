@@ -199,3 +199,57 @@ empty for a WAL-mode database while the CLI said it was written (N3).
 - `commitImport`'s in-transaction verification uses `tx as unknown as AppDb`; it works on
   better-sqlite3 but has not been run on expo-sqlite.
 - Hash scheme is now `tw2`. Nothing real was imported under `tw1`, so no migration is needed.
+
+## Phase 3 — Data layer (2026-09-19)
+
+**Built**
+- `src/data/`: accounts, people, categories, income/expense entries, transfers (create, edit both legs
+  together, delete both legs together), filtered lists with search and paging, account/total balances,
+  balance series, cash flow, category breakdown, daily calendar summary. Errors are `DataError`
+  (`invalid` / `not_found` / `conflict`) with messages the UI can show.
+- In-app import service (`src/import/service.ts`): `previewImport` then `applyImport`; the
+  confirmations (`confirmNew`, `allowSkips`, `allowLookalikes`) are now enforced by the library, not only
+  the CLI. `src/db/expo.ts`: on-device connection with the foreign-keys check.
+- Schema: CHECK `tx_occurred_format` and extra invariant 17; one shared amount limit (`src/db/limits.ts`).
+- Tests: `data-crud` (33), `data-balances` (26), `data-model` (5 seeds x 600 random operations),
+  `data-hardening` (25), `data-second-pass` (9), `import-service` (7).
+
+**Exit criteria, with the actual numbers**
+- CRUD for every entity: accounts, people, categories, income, expense, transfers.
+- Balance queries against hand-calculated fixtures (all worked out on paper before running):
+  an account with only transfers (Cash -210.00, Chase +250.00, Credit -40.00, total exactly 0); a credit
+  account going negative with a mixed total (Chase 2300.00, Cash 35.00, Credit -45.95, total 2289.05);
+  balances as of a date; the day-by-day series (1050.00, 944.12, 833.78, 833.78, 2318.78, 2289.05);
+  cash flow, category rollups and a deleted-row case.
+- Independent cross-check: the imported August month read back through the public API equals
+  TrackWallet's own header (6,196$ income, 2,506.91$ expenses, +3,689.09$) and all 22 calendar days
+  from the screenshot, with transfer markers on days 3, 4, 9, 17 and 25.
+- Model-based test: 5 seeds x 600 random operations; after EVERY operation each account balance, the
+  total and the cash flow matched an independent model exactly, and all invariants held.
+- `amount_usd` is used as stored and never recomputed (changing a stored rate moves nothing).
+- `npm run typecheck`: exit 0. `npm run test`: **12 files, 294 tests passed**.
+- Real tools against a fresh database with the new migration: August import committed, verification
+  passed, `schema-check` **17/17**; scratch files removed.
+- Mutation checks: 14 read/write protections, then 15 review-fix protections, then 5 second-pass
+  fixes; every mutation turned a test red. Two of my own tests were too weak (a redundant guard hid a
+  removed check) and were strengthened before they counted.
+
+**Review** (`data-integrity-reviewer` stand-in; see `DECISIONS.md`): the first attempt stalled and was
+not counted; rerun as read-side and write-side passes (no wrong balance found; 13 write-side findings);
+all fixed or consciously documented; a second pass on the fixes found one regression I had caused (an
+imported amount above the new cap could not be edited), now fixed. The reviewer was not run a third time.
+
+**Not verified / open**
+- **Nothing here has run on a phone.** `src/db/expo.ts` type-checks against the driver-neutral `AppDb`
+  and the reviewer read it against expo-sqlite's typings, but it has never opened a database on a device.
+  Device-only risks: `expo-crypto` is not installed (ids need `crypto.randomUUID`); there is no Metro or
+  Babel configuration yet for the `.sql` migration files; `TextDecoder` in strict mode; prepared
+  statements are never finalised by drizzle's Expo session. All belong to Phase 4 wiring.
+- Still no UI (Phase 4). `src/App.tsx` is the blank template.
+- Opening balances (decision I) are still unset; the data layer can set them (`updateAccount`) once the
+  real history is imported.
+- The confirmations are booleans, not tied to what the user reviewed: `applyImport` re-plans, so show
+  `previewImport` and apply straight away.
+- Not built (Phase 6 / 7): per-name lending balances, the Splitwise settle-up flow, CSV export, backup.
+  The export rule for entries with both a merchant and a note is undecided.
+- The reviewer was not run a third time on the second-pass fixes.

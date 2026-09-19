@@ -13,7 +13,9 @@
 //                   different (or no) import hash, e.g. entered by hand. Importing it doubles it.
 import fs from 'node:fs';
 import path from 'node:path';
-import { commitImport, ImportBlockedError, ImportInvariantError, ImportLookalikeError, ImportVerificationError } from '../import/commit';
+import {
+  commitImport, ImportBlockedError, ImportInvariantError, ImportLookalikeError, ImportNeedsConfirmationError, ImportVerificationError,
+} from '../import/commit';
 import { decodeCsvBytes } from '../import/decode';
 import { planImport } from '../import/plan';
 import { formatPlan } from '../import/report';
@@ -109,7 +111,12 @@ try {
     }
     console.log(`\nBackup written and checked: ${backup} (${tables.map((t, i) => `${backedUp[i]} ${t}`).join(', ')})`);
 
-    const result = commitImport(db, plan, localIso(), { verifyCsv: csvText, allowLookalikes: flag('--allow-lookalikes') });
+    const result = commitImport(db, plan, localIso(), {
+      verifyCsv: csvText,
+      allowLookalikes: flag('--allow-lookalikes'),
+      confirmNew: flag('--confirm-new'),
+      allowSkips: flag('--allow-skips'),
+    });
     console.log(
       `COMMITTED: ${result.transactionsInserted} transaction(s), ${result.peopleInserted} names, ${result.categoriesInserted} categories.\n`,
     );
@@ -118,7 +125,7 @@ try {
 } catch (e) {
   if (e instanceof ImportFatalError) {
     console.error(`\nCANNOT IMPORT: ${e.message}`);
-  } else if (e instanceof ImportBlockedError || e instanceof ImportLookalikeError) {
+  } else if (e instanceof ImportBlockedError || e instanceof ImportLookalikeError || e instanceof ImportNeedsConfirmationError) {
     console.error(`\nNOT COMMITTED: ${e.message}`);
   } else if (e instanceof ImportInvariantError) {
     console.error(`\nROLLED BACK: ${e.message}`);

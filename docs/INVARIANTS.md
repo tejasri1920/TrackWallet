@@ -36,6 +36,8 @@ They are numbered after the original 11 and flagged `extra` in code. See
 15. Currency codes are three uppercase letters (`GLOB '[A-Z][A-Z][A-Z]'`)
 16. A subcategory has the same `kind` as its parent (added 2026-09-18 at the user's
     request, resolving Phase 1 review finding 8)
+17. `occurred_at` is a local timestamp shaped `YYYY-MM-DDTHH:MM:SS` (added in Phase 3; every
+    date query compares this text lexicographically, so the shape is part of the schema)
 
 Also enforced, though not a row-level invariant: account names are unique
 case-insensitively (`accounts_name_ci`), because CSV rows find their account by name.
@@ -59,6 +61,7 @@ case-insensitively (`accounts_name_ci`), because CSV rows find their account by 
 | 14 | | `trg_tx_transfer_group_ins` | `createTransfer` | yes |
 | 15 | `tx_currency_format`, `accounts_currency_format` | | | yes |
 | 16 | | `trg_cat_kind_parent_ins`, `trg_cat_kind_parent_upd` | | yes |
+| 17 | `tx_occurred_format` | | `normalizeTimestamp` in the data layer and importer | yes |
 
 ### Known limits of enforcement
 
@@ -66,8 +69,9 @@ case-insensitively (`accounts_name_ci`), because CSV rows find their account by 
   two). Only `createTransfer` (both legs, one transaction) and the audit guard it.
 - **UPDATEs and soft-deletes of one transfer leg** are not blocked by the
   database: the insert-side trigger cannot police edits without also blocking
-  legitimate two-leg edits. `softDeleteTransfer` handles deletion; an
-  `updateTransfer` is due in Phase 3. Until then a raw UPDATE of one leg is
+  legitimate two-leg edits. The data layer's `updateTransfer` (both legs in one
+  transaction; a damaged group is refused, never repaired) and `deleteTransfer` /
+  `softDeleteTransfer` are the sanctioned paths. A raw UPDATE of one leg is still
   caught only by audits 4/5/14 afterwards (pinned by a test).
 - Category-level triggers count soft-deleted transactions, so a category whose
   only history is soft-deleted still cannot change `kind`. Conservative on purpose.

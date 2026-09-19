@@ -127,11 +127,22 @@ export function planImport(db: AppDb, csvText: string, options: PlanOptions = {}
     if (accountByName.has(key)) ambiguousAccounts.add(key); else accountByName.set(key, a);
   }
   const cats = db.select().from(categories).all().map((c) => ({ ...c }));
-  const persons = new Map(db.select().from(people).all().map((p) => [fold(p.name), { id: p.id, name: p.name }]));
+  const persons = new Map<string, { id: string; name: string; archived: boolean }>(
+    db.select().from(people).all().map((p) => [fold(p.name), { id: p.id, name: p.name, archived: p.archivedAt !== null }]),
+  );
 
   const newCategories: PlannedCategory[] = [];
   const newPeople: PlannedPerson[] = [];
   const warnings: string[] = [];
+  // Archiving hides something from pickers; it does not forbid importing old months into it. Say so once.
+  const caseWarned = new Set<string>();
+  const archivedSeen = new Set<string>();
+  const noteArchived = (kind: string, name: string) => {
+    const key = `${kind}|${name}`;
+    if (archivedSeen.has(key)) return;
+    archivedSeen.add(key);
+    warnings.push(`${kind} "${name}" is archived; the import still uses it because this file's history belongs there`);
+  };
   const mappingCounts = new Map<string, { from: string; to: string; kind: SourceType; rows: number }>();
 
   // ---- hashes and already-imported rows ---------------------------------------------------
@@ -159,6 +170,7 @@ export function planImport(db: AppDb, csvText: string, options: PlanOptions = {}
         message: `account ${JSON.stringify(acc.name)} is ${acc.currency} but the row is ${r.currency}`,
       });
     } else {
+      if (acc.archivedAt !== null) noteArchived('account', acc.name);
       usable.push(r);
     }
   }
@@ -182,12 +194,16 @@ export function planImport(db: AppDb, csvText: string, options: PlanOptions = {}
     const key = fold(name);
     const found = persons.get(key);
     if (found) {
-      if (found.name !== name) warnings.push(`name ${JSON.stringify(name)} matched existing/first-seen ${JSON.stringify(found.name)} (case-insensitive)`);
+      if (found.archived) noteArchived('name', found.name);
+      if (found.name !== name && !caseWarned.has(`${found.id}|${name}`)) {
+        caseWarned.add(`${found.id}|${name}`);
+        warnings.push(`name ${JSON.stringify(name)} matched existing/first-seen ${JSON.stringify(found.name)} (case-insensitive)`);
+      }
       return found.id;
     }
-    const p = { id: genId(), name };
+    const p = { id: genId(), name, archived: false };
     persons.set(key, p);
-    newPeople.push(p);
+    newPeople.push({ id: p.id, name: p.name });
     return p.id;
   };
 
@@ -250,6 +266,7 @@ export function planImport(db: AppDb, csvText: string, options: PlanOptions = {}
       }
     }
     const top = findTop(kind, categoryName) ?? addCategory(kind, categoryName, null);
+    if (top.archivedAt !== null) noteArchived('category', top.name);
 
     if (top.peopleBacked === 1) {
       if (r.subcategory !== '') {
@@ -265,6 +282,7 @@ export function planImport(db: AppDb, csvText: string, options: PlanOptions = {}
       legs.push(legFor(r, { categoryId: top.id, personId }));
     } else {
       const sub = r.subcategory === '' ? top : (findChild(top.id, r.subcategory) ?? addCategory(kind, r.subcategory, top));
+      if (sub.archivedAt !== null) noteArchived('category', sub.name);
       legs.push(legFor(r, { categoryId: sub.id, merchant: r.note === '' ? null : r.note }));
     }
   }

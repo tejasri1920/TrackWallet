@@ -154,7 +154,7 @@ describe('hand-written migration objects survive', () => {
     for (const c of [
       'tx_type_valid', 'tx_expense_shape', 'tx_income_shape', 'tx_transfer_shape', 'tx_usd_rate',
       'tx_foreign_rate', 'tx_sign_match', 'tx_money_integer', 'tx_fx_numeric', 'tx_currency_format',
-      'tx_group_only_on_transfer', 'tx_transfer_nonzero',
+      'tx_group_only_on_transfer', 'tx_transfer_nonzero', 'tx_occurred_format',
     ]) {
       expect(ddl, c).toContain(c);
     }

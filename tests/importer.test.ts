@@ -10,6 +10,8 @@ import { HEADER } from '../src/import/trackwallet';
 import { verifyImport } from '../src/import/verify';
 import { NOW, makeEnforcingDb, makeUnconstrainedDb, rowsOf } from './helpers';
 
+/** The user reviewed and accepted the new names / skipped rows (the library refuses otherwise). */
+const ACK = { confirmNew: true, allowSkips: true };
 const FIXTURE = fs.readFileSync(path.resolve(__dirname, 'fixtures/trackwallet_2026-08-01_2026-08-31.csv'), 'utf8');
 const DATA_LINES = FIXTURE.split('\n').filter(Boolean).slice(1);
 const file = (...lines: string[]) => [HEADER.join(','), ...lines].join('\n') + '\n';
@@ -21,7 +23,7 @@ type Handle = ReturnType<typeof makeEnforcingDb>;
 const plan = (h: Handle, text: string, filename = 'test.csv') => planImport(h.db, text, { filename, newId });
 const importText = (h: Handle, text: string, filename?: string) => {
   const p = plan(h, text, filename);
-  commitImport(h.db, p, NOW);
+  commitImport(h.db, p, NOW, ACK);
   return p;
 };
 const count = (h: Handle, table = 'transactions') => (rowsOf(h.sqlite, `SELECT COUNT(*) AS n FROM ${table}`)[0].n as number);
@@ -183,7 +185,7 @@ describe('idempotency and overlapping files', () => {
     importText(h, FIXTURE, 'a.csv');
     const again = plan(h, FIXTURE, 'renamed.csv');
     expect([again.legs.length, again.alreadyImported.length, again.newPeople.length]).toEqual([0, 65, 0]);
-    commitImport(h.db, again, NOW);
+    commitImport(h.db, again, NOW, ACK);
     expect(count(h)).toBe(65);
     expect(count(h, 'people')).toBe(7);
   });
@@ -195,7 +197,7 @@ describe('idempotency and overlapping files', () => {
     const p = plan(h, FIXTURE, 'whole-month.csv');
     expect(p.alreadyImported).toHaveLength(before);
     expect(p.legs.length + before).toBe(65);
-    commitImport(h.db, p, NOW);
+    commitImport(h.db, p, NOW, ACK);
     expect(count(h)).toBe(65);
     expect(verifyImport(h.db, FIXTURE).passed).toBe(true);
   });
@@ -271,7 +273,7 @@ describe('a bad file never half-imports', () => {
     const p = plan(h, file(goodNewPerson, '"2026-08-01T10:01","Expense","Cash","USD","5","5","Leisure","",""'));
     expect(p.issues).toHaveLength(1);
     expect(p.rowsRead).toBe(2);
-    expect(() => commitImport(h.db, p, NOW)).toThrow(ImportBlockedError);
+    expect(() => commitImport(h.db, p, NOW, ACK)).toThrow(ImportBlockedError);
     expect([count(h), count(h, 'people'), count(h, 'categories')]).toEqual([0, 0, 28]);
   });
 
@@ -293,7 +295,7 @@ describe('a bad file never half-imports', () => {
     const p = plan(h, FIXTURE);
     const lastExpense = [...p.legs].reverse().find((l) => l.type === 'expense')!;
     lastExpense.row = { ...lastExpense.row, amountNative: 500, amountUsd: 500 }; // corrupt: positive expense
-    expect(() => commitImport(h.db, p, NOW)).toThrow(/tx_expense_shape/);
+    expect(() => commitImport(h.db, p, NOW, ACK)).toThrow(/tx_expense_shape/);
     expect([count(h), count(h, 'people')]).toEqual([0, 0]);
   });
 
@@ -303,7 +305,7 @@ describe('a bad file never half-imports', () => {
     const lastExpense = [...p.legs].reverse().find((l) => l.type === 'expense')!;
     lastExpense.row = { ...lastExpense.row, amountNative: 500, amountUsd: 500 };
     let error: unknown;
-    try { commitImport(h.db, p, NOW); } catch (e) { error = e; }
+    try { commitImport(h.db, p, NOW, ACK); } catch (e) { error = e; }
     expect(error).toBeInstanceOf(ImportInvariantError);
     expect((error as ImportInvariantError).failures.map((f) => f.invariant.id)).toContain(1);
     expect([count(h), count(h, 'people')]).toEqual([0, 0]);
@@ -323,7 +325,7 @@ describe('category and people mapping', () => {
       ['expense', 'Health', 'Gym'],
       ['expense', 'Food & Drinks', 'Restaurants'],
     ]);
-    commitImport(h.db, p, NOW);
+    commitImport(h.db, p, NOW, ACK);
     expect(rowsOf(h.sqlite, `SELECT c.name AS name, p.name AS parent, c.kind AS kind FROM categories c LEFT JOIN categories p ON p.id = c.parent_id WHERE c.name IN ('Health','Gym','Restaurants') ORDER BY c.name`)).toEqual([
       { name: 'Gym', parent: 'Health', kind: 'expense' },
       { name: 'Health', parent: null, kind: 'expense' },
@@ -337,7 +339,7 @@ describe('category and people mapping', () => {
     const h = makeEnforcingDb();
     const p = plan(h, file(exp('food & drinks', 'GROCERIES', 'Aldi')));
     expect(p.newCategories).toEqual([]);
-    commitImport(h.db, p, NOW);
+    commitImport(h.db, p, NOW, ACK);
     expect(rowsOf(h.sqlite, `SELECT category_id FROM transactions`)).toEqual([{ category_id: 'cat-exp-food-and-drinks-groceries' }]);
   });
 

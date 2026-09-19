@@ -74,7 +74,8 @@ CREATE TABLE `transactions` (
 	CONSTRAINT "tx_fx_numeric" CHECK(typeof("transactions"."fx_rate") IN ('real','integer')),
 	CONSTRAINT "tx_currency_format" CHECK("transactions"."currency" GLOB '[A-Z][A-Z][A-Z]'),
 	CONSTRAINT "tx_group_only_on_transfer" CHECK("transactions"."transfer_group_id" IS NULL OR "transactions"."type" = 'transfer'),
-	CONSTRAINT "tx_transfer_nonzero" CHECK("transactions"."type" <> 'transfer' OR "transactions"."amount_native" <> 0)
+	CONSTRAINT "tx_transfer_nonzero" CHECK("transactions"."type" <> 'transfer' OR "transactions"."amount_native" <> 0),
+	CONSTRAINT "tx_occurred_format" CHECK("transactions"."occurred_at" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]')
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `transactions_import_hash` ON `transactions` (`import_hash`) WHERE "transactions"."import_hash" IS NOT NULL;--> statement-breakpoint

@@ -12,6 +12,8 @@ import { HEADER, pairTransfers, parseTrackWallet, type SourceRow } from '../src/
 import { verifyImport } from '../src/import/verify';
 import { NOW, makeEnforcingDb, rowsOf } from './helpers';
 
+/** The user reviewed and accepted the new names / skipped rows (the library refuses otherwise). */
+const ACK = { confirmNew: true, allowSkips: true };
 const REPO = path.resolve(__dirname, '..');
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/trackwallet_2026-08-01_2026-08-31.csv');
 const FIXTURE = fs.readFileSync(FIXTURE_PATH, 'utf8');
@@ -23,7 +25,7 @@ type Handle = ReturnType<typeof makeEnforcingDb>;
 const plan = (h: Handle, text: string) => planImport(h.db, text, { filename: 'second-pass.csv', newId });
 const importText = (h: Handle, text: string) => {
   const p = plan(h, text);
-  commitImport(h.db, p, NOW, { verifyCsv: text });
+  commitImport(h.db, p, NOW, { ...ACK, verifyCsv: text });
   return p;
 };
 const count = (h: Handle, where = '') => rowsOf(h.sqlite, `SELECT COUNT(*) AS n FROM transactions ${where}`)[0].n as number;
@@ -48,7 +50,7 @@ describe('N1: an earlier import that was since edited or deleted does not veto a
     const wider = file(A, B, C);
     const p = plan(h, wider);
     expect([p.legs.length, p.alreadyImported.length]).toEqual([1, 2]); // the deleted row is NOT resurrected
-    expect(() => commitImport(h.db, p, NOW, { verifyCsv: wider })).not.toThrow();
+    expect(() => commitImport(h.db, p, NOW, { ...ACK, verifyCsv: wider })).not.toThrow();
     expect(count(h, 'WHERE deleted_at IS NULL')).toBe(2); // B and C
     expect(rowsOf(h.sqlite, `SELECT merchant FROM transactions WHERE deleted_at IS NULL ORDER BY merchant`)).toEqual([{ merchant: 'B' }, { merchant: 'C' }]);
 
@@ -302,9 +304,9 @@ describe('the library refuses lookalikes unless they were reviewed', () => {
       .run(NOW, NOW);
     const csv = file(expense(500));
     const p = plan(h, csv);
-    expect(() => commitImport(h.db, p, NOW, { verifyCsv: csv })).toThrow(/look like rows already in the database/);
+    expect(() => commitImport(h.db, p, NOW, { ...ACK, verifyCsv: csv })).toThrow(/look like rows already in the database/);
     expect(count(h)).toBe(1);
-    expect(() => commitImport(h.db, p, NOW, { verifyCsv: csv, allowLookalikes: true })).not.toThrow();
+    expect(() => commitImport(h.db, p, NOW, { ...ACK, verifyCsv: csv, allowLookalikes: true })).not.toThrow();
     expect(count(h)).toBe(2);
   });
 });
